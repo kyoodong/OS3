@@ -7,6 +7,8 @@
 #include "mmu.h"
 #include "proc.h"
 
+extern struct ptable ptable;
+
 int
 sys_fork(void)
 {
@@ -90,17 +92,30 @@ sys_uptime(void)
   return xticks;
 }
 
-void
+int
 sys_hello(void)
 {
 	cprintf("hello xv6\n");
+	return 0;
 }
 
-void
+int
 sys_hello_name(void)
 {
 	char *buffer;
 	if (argstr(0, &buffer) < 0)
-		return;
+		return -1;
 	cprintf("hello %s\n", buffer);
+	return 0;
+}
+
+int
+sys_get_num_proc(void)
+{
+	int count = 0;
+	for (int i = 0; i < NPROC; i++) {
+		if (ptable.proc[i].state != UNUSED)
+			count++;
+	}
+	return count;
 }

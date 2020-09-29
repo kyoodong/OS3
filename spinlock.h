@@ -1,3 +1,6 @@
+
+#ifndef SPIN_LOCK_H
+#define SPIN_LOCK_H 1
 // Mutual exclusion lock.
 struct spinlock {
   uint locked;       // Is the lock held?
@@ -8,4 +11,4 @@ struct spinlock {
   uint pcs[10];      // The call stack (an array of program counters)
                      // that locked the lock.
 };
-
+#endif

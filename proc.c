@@ -339,6 +339,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+	  p->count_context_switch++;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();

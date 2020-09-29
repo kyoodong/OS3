@@ -1,3 +1,5 @@
+#include "processInfo.h"
+
 struct stat;
 struct rtcdate;
 
@@ -27,6 +29,7 @@ void hello(void);
 void hello_name(char *);
 int get_num_proc();
 int get_max_pid();
+int get_proc_info(int, struct processInfo*);
 
 // ulib.c
 int stat(const char*, struct stat*);

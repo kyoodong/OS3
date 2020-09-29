@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "processInfo.h"
 
 extern struct ptable ptable;
 
@@ -129,4 +130,39 @@ sys_get_max_pid(void)
 			maxpid = ptable.proc[i].pid;
 	}
 	return maxpid;
+}
+
+int
+sys_get_proc_info(void)
+{
+	int pid;
+	int index = -1;
+	char *cp;
+	struct processInfo *p;
+	int size = sizeof(struct processInfo);
+
+	if (argint(0, &pid) < 0)
+		return -1;
+
+	if (argptr(1, &cp, size) < 0)
+		return -1;
+
+	p = (struct processInfo*) cp;
+	for (int i = 0; i < NPROC; i++) {
+		if (ptable.proc[i].pid == pid) {
+			index = i;
+			break;
+		}
+	}
+
+	if (index == -1)
+		return -1;
+
+	if (ptable.proc[index].parent == 0)
+		p->ppid = 0;
+	else
+		p->ppid = ptable.proc[index].parent->pid;
+	p->psize = (int) ptable.proc[index].sz;
+	p->numberContextSwitches = ptable.proc[index].count_context_switch;
+	return 0;
 }

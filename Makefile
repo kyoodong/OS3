@@ -189,6 +189,7 @@ UPROGS=\
 	_getprocinfo_test\
 	_seqinc_prio\
 	_seqdec_prio\
+	_priority_test\
 
 
 fs.img: mkfs README $(UPROGS)
@@ -261,7 +262,7 @@ EXTRA=\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
 	printf.c umalloc.c\
 	_hello_test.c _helloname_test.c _getnumproc_test.c _getmaxpid_test.c\
-	_getprocinfo_test.c _seqinc_prio.c _setdec_prio.c\
+	_getprocinfo_test.c _seqinc_prio.c _setdec_prio.c _priority_test.c\
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
 

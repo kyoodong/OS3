@@ -166,3 +166,23 @@ sys_get_proc_info(void)
 	p->numberContextSwitches = ptable.proc[index].count_context_switch;
 	return 0;
 }
+
+int
+sys_set_prio(void)
+{
+	int priority;
+	if (argint(0, &priority) < 0)
+		return -1;
+
+	if (priority < 0)
+		return -1;
+
+	myproc()->priority = priority;
+	return 0;
+}
+
+int
+sys_get_prio(void)
+{
+	return myproc()->priority;
+}

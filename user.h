@@ -26,6 +26,7 @@ int uptime(void);
 void hello(void);
 void hello_name(char *);
 int get_num_proc();
+int get_max_pid();
 
 // ulib.c
 int stat(const char*, struct stat*);

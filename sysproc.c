@@ -119,3 +119,14 @@ sys_get_num_proc(void)
 	}
 	return count;
 }
+
+int
+sys_get_max_pid(void)
+{
+	int maxpid = 0;
+	for (int i = 0; i < NPROC; i++) {
+		if (ptable.proc[i].pid > maxpid)
+			maxpid = ptable.proc[i].pid;
+	}
+	return maxpid;
+}

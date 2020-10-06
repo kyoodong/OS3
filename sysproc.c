@@ -185,7 +185,9 @@ sys_set_prio(void)
 	if (priority < 0)
 		return -1;
 
+	acquire(&ptable.lock);
 	myproc()->priority = priority;
+	release(&ptable.lock);
 	return 0;
 }
 

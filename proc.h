@@ -53,6 +53,7 @@ struct proc {
   char name[16];               // Process name (debugging)
   int count_context_switch;	   // Number of context switching
   int priority;
+  int ticks;
 };
 
 // Process memory is laid out contiguously, low addresses first:

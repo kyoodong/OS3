@@ -108,7 +108,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  p->count_context_switch = 0;
+  p->ticks = 0;
+  p->priority = DEFAULT_PRIORITY;
+  
   return p;
 }
 
@@ -327,27 +330,98 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+	int max_priority = 0;
+	int max_priorities[3] = {0, 0, 0};
+	int priority_count = 0;
+	int min_priority = 987654321;
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+		if (!(p->state == RUNNABLE || p->state == RUNNING))
+			continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+		if (max_priority < p->priority) {
+			max_priority = p->priority;
+
+			for (int i = 2; i > 0; i--)
+			   max_priorities[i] = max_priorities[i - 1];
+			max_priorities[0] = p->priority;
+
+			if (priority_count < 3)
+				priority_count++;
+		}
+
+		if (min_priority > p->priority)
+			min_priority = p->priority;
+	}
+
+	if (priority_count > 0)
+		max_priority = (max_priorities[0] + max_priorities[1] + max_priorities[2]) / priority_count;
+	//cprintf("pc = %d, max = %d min = %d\n", priority_count, max_priority, min_priority);
+
+	int count = 0;
+	long tick;
+
+    // Loop over process table looking for process to run.
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		if (max_priority - min_priority == 0) {
+			tick = MAX_TICK_PER_PROCESS;
+		}
+
+		else
+			tick = (float) MAX_TICK_PER_PROCESS / (max_priority - min_priority) * (p->priority - min_priority);
+
+		tick = tick * tick * tick;
+		tick = tick / MAX_TICK_PER_PROCESS / MAX_TICK_PER_PROCESS;
+
+		if (p->state == RUNNING && tick > p->ticks) {
+			count++;
+			continue;
+		}
+
+      if(p->state != RUNNABLE || tick <= p->ticks) {
+		  continue; 
+	  }
+
+	  count++;
+	  // Switch to chosen process.  It is the process's job
+	  // to release ptable.lock and then reacquire it
+	  // before jumping back to us.
+	  c->proc = p;
+	  switchuvm(p);
+	  p->state = RUNNING;
 	  p->count_context_switch++;
+	  p->ticks++;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+	  swtch(&(c->scheduler), p->context);
+	  switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
+	  // Process is done running for now.
+	  // It should have changed its p->state before coming back.
+	  c->proc = 0;
+	}
+
+	if (count == 0) {
+		for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+			p->ticks = 0;
+
+			/*
+			long tick;
+			if (max_priority - min_priority == 0) {
+				tick = MAX_TICK_PER_PROCESS;
+			}
+	
+			else
+				tick = (float) MAX_TICK_PER_PROCESS / (max_priority - min_priority) * (p->priority - min_priority);
+	
+			tick = tick * tick * tick;
+			tick = tick / MAX_TICK_PER_PROCESS / MAX_TICK_PER_PROCESS;
+			if (p->pid != 0 && p->pid != 1 && p->pid != 2)
+				cprintf("%d %d %d %d %d %d %d\n", cpuid(), p->pid, p->ticks, p->priority, p->count_context_switch, tick, max_priority);
+			*/
+		}
+	}
     release(&ptable.lock);
 
   }
@@ -383,6 +457,7 @@ sched(void)
 void
 yield(void)
 {
+//	cprintf("\tyield %d %d %d\n", cpuid(), myproc()->pid, myproc()->state);
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();

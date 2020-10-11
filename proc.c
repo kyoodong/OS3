@@ -108,6 +108,8 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+    
+  // 프로세스 기본 값 설정
   p->count_context_switch = 0;
   p->ticks = 0;
   p->priority = DEFAULT_PRIORITY;
@@ -333,14 +335,19 @@ scheduler(void)
     acquire(&ptable.lock);
 
 	int max_priority = 0;
+      
+    // 프로세스 리스트 중 가장 큰 우선순위 값 3개를 추출
 	int max_priorities[3] = {0, 0, 0};
 	int priority_count = 0;
 	int min_priority = 987654321;
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        // RUNNABLE 혹은 RUNNING 상태의 프로세스만을 검사
+        // 즉 스케쥴링에 포함될 수 있는 프로세스들만을 검사하고자 함
 		if (!(p->state == RUNNABLE || p->state == RUNNING))
 			continue;
 
+        // max_priority 갱신
 		if (max_priority < p->priority) {
 			max_priority = p->priority;
 
@@ -352,15 +359,23 @@ scheduler(void)
 				priority_count++;
 		}
 
+        // min_priority 갱신
 		if (min_priority > p->priority)
 			min_priority = p->priority;
 	}
 
+    // 최상위 우선순위 값 3개의 평균을 max_priority로 지정
+    // 우선순위에 따라 cpu 할당량을 조절해야하는데 특이값 우선순위를 가진
+    // 프로세스가 존재한다면 해당 프로세스가 cpu를 독점하는 문제가 발생하기에
+    // 특이값을 어느정도 상쇄시켜주기 위함
 	if (priority_count > 0)
 		max_priority = (max_priorities[0] + max_priorities[1] + max_priorities[2]) / priority_count;
-	//cprintf("pc = %d, max = %d min = %d\n", priority_count, max_priority, min_priority);
 
+    // 스케쥴링 가능한 cpu의 수
+    // count 가 0이 되면 RR scheduling의 1 Epoch 이 완료되었음을 의미함
 	int count = 0;
+      
+    // 현재 스케쥴링된 프로세스가 해당 epoch에서 수행할 수 있는 최대 tick
 	long tick;
 
     // Loop over process table looking for process to run.
@@ -369,12 +384,26 @@ scheduler(void)
 			tick = MAX_TICK_PER_PROCESS;
 		}
 
+        // 우선순위 값에 맞추어 normalize 를 수행
 		else
 			tick = (float) MAX_TICK_PER_PROCESS / (max_priority - min_priority) * (p->priority - min_priority);
 
+        // 우선순위가 높은 값들의 프로세스 tick은 explosion 시키고
+        // 낮은 값의 프로세스 tick은 shrink 시킴
+        // 즉 평균적인 경우의 tick의 배분은
+        // <-  낮은 우선순위                높은 우선순위 ->
+        // .  .  .  .  .  .  .  .  .  .  .  와 같이 균등
+        // 하지만 explosion, shrink 이후의 tick의 배분은
+        // <-  낮은 우선순위                높은 우선순위 ->
+        // ... . .    .    .      .     .          .
+        // 우선순위가 높을수록 폭발적으로 많이 cpu 를 할당해줌
+        // 우선순위가 높은 프로세스가 먼저 종료되어야 하는데
+        // 비슷한 우선순위끼리 군집화되어 여러 그룹으로 나뉜경우
+        // 해당 그룹 내에서 우선순위와 상관없이 먼저 종료되는 현상을 억제하기 위함
 		tick = tick * tick * tick;
 		tick = tick / MAX_TICK_PER_PROCESS / MAX_TICK_PER_PROCESS;
 
+        // 스케쥴링의 대상이지만 다른 cpu에서 동작하고 있는 경우
 		if (p->state == RUNNING && tick > p->ticks) {
 			count++;
 			continue;
@@ -405,21 +434,6 @@ scheduler(void)
 	if (count == 0) {
 		for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 			p->ticks = 0;
-
-			/*
-			long tick;
-			if (max_priority - min_priority == 0) {
-				tick = MAX_TICK_PER_PROCESS;
-			}
-	
-			else
-				tick = (float) MAX_TICK_PER_PROCESS / (max_priority - min_priority) * (p->priority - min_priority);
-	
-			tick = tick * tick * tick;
-			tick = tick / MAX_TICK_PER_PROCESS / MAX_TICK_PER_PROCESS;
-			if (p->pid != 0 && p->pid != 1 && p->pid != 2)
-				cprintf("%d %d %d %d %d %d %d\n", cpuid(), p->pid, p->ticks, p->priority, p->count_context_switch, tick, max_priority);
-			*/
 		}
 	}
     release(&ptable.lock);

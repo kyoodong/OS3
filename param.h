@@ -11,5 +11,5 @@
 #define LOGSIZE      (MAXOPBLOCKS*3)  // max data blocks in on-disk log
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
-#define DEFAULT_PRIORITY 1000
+#define DEFAULT_PRIORITY 10000
 #define MAX_TICK_PER_PROCESS 100
